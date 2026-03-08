@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <style>
+    /* Konfigurasi Variabel Warna */
+    :root {
+      --bg-color: #282828;
+      --text-color: #f1f1f1;
+      --panel-bg: #3f3f3f;
+      --slider-bg-off: #4a2323;
+      --slider-color-off: #ff5555;
+      --slider-bg-on: #153320;
+      --slider-color-on: #44ff77;
+    }
+    
+    body.light-mode {
+      --bg-color: #f8f9fa;
+      --text-color: #202124;
+      --panel-bg: #e8eaed;
+      --slider-bg-off: #fad2d2;
+      --slider-color-off: #d93025;
+      --slider-bg-on: #ceead6;
+      --slider-color-on: #188038;
+    }
+
+    body { 
+      width: 250px; margin: 0; padding: 20px; 
+      background: var(--bg-color); color: var(--text-color); 
+      font-family: 'Segoe UI', Tahoma, sans-serif; 
+      transition: background 0.3s, color 0.3s; 
+    }
+    
+    .header { font-weight: bold; font-size: 16px; margin-bottom: 10px; display: flex; align-items: center; gap: 8px;}
+    
+    /* Tampilan Situs Saat Ini */
+    .site-display { text-align: center; font-size: 13px; margin-bottom: 20px; color: #8ab4f8; font-family: monospace; }
+    
+    /* Toggle Switch Wrapper */
+    .toggle-wrapper { 
+      background: var(--panel-bg); border-radius: 30px; 
+      position: relative; display: flex; height: 45px; 
+      cursor: pointer; user-select: none; 
+    }
+    
+    /* Slider Animasi */
+    .toggle-slider { 
+      position: absolute; width: 50%; height: 100%; 
+      background: var(--slider-bg-off); border-radius: 30px; 
+      transition: transform 0.3s cubic-bezier(0.4, 0.0, 0.2, 1), background 0.3s; 
+      border: 2px solid var(--slider-color-off); box-sizing: border-box; 
+    }
+    
+    /* Keadaan ON */
+    .toggle-wrapper.on .toggle-slider { 
+      transform: translateX(100%); 
+      background: var(--slider-bg-on); 
+      border-color: var(--slider-color-on); 
+    }
+    
+    /* Teks ON / OFF */
+    .toggle-label { 
+      flex: 1; display: flex; justify-content: center; align-items: center; 
+      z-index: 1; font-weight: 900; font-size: 14px; color: #999; 
+      transition: color 0.3s; 
+    }
+    
+    .toggle-wrapper:not(.on) .label-off { color: var(--slider-color-off); }
+    .toggle-wrapper.on .label-on { color: var(--slider-color-on); }
+    
+    .footer { display: flex; justify-content: space-between; margin-top: 25px; align-items: center;}
+    .theme-btn { cursor: pointer; font-size: 16px; opacity: 0.7; transition: opacity 0.2s;}
+    .theme-btn:hover { opacity: 1; }
+  </style>
+</head>
+<body>
+  <div class="header"><span>🗑</span> Clean Browser History</div>
+  <div class="site-display" id="currentSite">Detecting...</div>
+  
+  <div class="toggle-wrapper" id="ghostToggle">
+    <div class="toggle-slider"></div>
+    <div class="toggle-label label-off">OFF</div>
+    <div class="toggle-label label-on">ON</div>
+  </div>
+  
+  <div class="footer">
+    <span class="theme-btn" id="themeToggle" title="Toggle Light/Dark Mode">𖡊</span>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>
