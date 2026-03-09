@@ -1,41 +1,50 @@
+// FUNGSI BARU: Pembersih www. seragam
+function getCleanHostname(urlStr) {
+    try {
+        return new URL(urlStr).hostname.replace(/^www\./i, '').toLowerCase();
+    } catch(e) { return ""; }
+}
+
 // --- Fungsi mengatur badge per tab ---
 function updateBadgeForTab(tabId, url) {
-    if (!url) {
+    const hostname = getCleanHostname(url);
+    if (!hostname) {
         chrome.action.setBadgeText({ text: '', tabId: tabId });
         return;
     }
-    try {
-        const hostname = new URL(url).hostname;
-        chrome.storage.local.get({ ghostSites: [] }, (res) => {
-            if (res.ghostSites.includes(hostname)) {
-                chrome.action.setBadgeText({ text: 'ON', tabId: tabId });
-                chrome.action.setBadgeBackgroundColor({ color: '#188038', tabId: tabId });
-            } else {
-                chrome.action.setBadgeText({ text: '', tabId: tabId });
-            }
-        });
-    } catch (e) {
-        chrome.action.setBadgeText({ text: '', tabId: tabId });
-    }
+    
+    chrome.storage.local.get({ activeMode: 'blacklist', blacklist: [], whitelist: [] }, (res) => {
+        let isGhostActive = false;
+        
+        if (res.activeMode === 'blacklist') {
+            isGhostActive = res.blacklist.includes(hostname);
+        } else {
+            isGhostActive = !res.whitelist.includes(hostname);
+        }
+
+        if (isGhostActive) {
+            chrome.action.setBadgeText({ text: 'ON', tabId: tabId });
+            chrome.action.setBadgeBackgroundColor({ color: '#188038', tabId: tabId });
+        } else {
+            chrome.action.setBadgeText({ text: '', tabId: tabId });
+        }
+    });
 }
 
-// --- Listener: Saat pindah tab ---
 chrome.tabs.onActivated.addListener((activeInfo) => {
     chrome.tabs.get(activeInfo.tabId, (tab) => {
         if (tab.url) updateBadgeForTab(activeInfo.tabId, tab.url);
     });
 });
 
-// --- Listener: Saat tab di-refresh atau ganti URL ---
 chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
     if (changeInfo.url || changeInfo.status === 'complete') {
         updateBadgeForTab(tabId, tab.url);
     }
 });
 
-// --- Listener: Saat toggle di popup ditekan ---
 chrome.storage.onChanged.addListener((changes) => {
-    if (changes.ghostSites) {
+    if (changes.activeMode || changes.blacklist || changes.whitelist) {
         chrome.tabs.query({active: true, currentWindow: true}, (tabs) => {
             if(tabs[0]) updateBadgeForTab(tabs[0].id, tabs[0].url);
         });
@@ -44,18 +53,21 @@ chrome.storage.onChanged.addListener((changes) => {
 
 // --- LOGIKA UTAMA: Filter dan Hapus Histori ---
 chrome.history.onVisited.addListener((historyItem) => {
-    if (!historyItem.url) return;
+    const hostname = getCleanHostname(historyItem.url);
+    if (!hostname) return;
     
-    try {
-        const hostname = new URL(historyItem.url).hostname;
-        chrome.storage.local.get({ ghostSites: [] }, (res) => {
-            // Jika hostname saat ini ada di daftar ghostSites, hapus historinya!
-            if (res.ghostSites.includes(hostname)) {
-                chrome.history.deleteUrl({ url: historyItem.url });
-                console.log(`Ghost Mode AKTIF - Jejak dihapus untuk domain: ${hostname}`);
-            }
-        });
-    } catch (e) {
-        // Abaikan jika URL tidak valid (seperti about:blank)
-    }
+    chrome.storage.local.get({ activeMode: 'blacklist', blacklist: [], whitelist: [] }, (res) => {
+        let shouldDelete = false;
+        
+        if (res.activeMode === 'blacklist') {
+            shouldDelete = res.blacklist.includes(hostname);
+        } else {
+            shouldDelete = !res.whitelist.includes(hostname);
+        }
+
+        if (shouldDelete) {
+            chrome.history.deleteUrl({ url: historyItem.url });
+            console.log(`[${res.activeMode.toUpperCase()}] Ghost Mode AKTIF - Jejak dihapus: ${hostname}`);
+        }
+    });
 });
