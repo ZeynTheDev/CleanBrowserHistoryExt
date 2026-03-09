@@ -1,13 +1,23 @@
 {
 	"manifest_version": 3,
 	"name": "Clean Browser History",
-	"version": "1.0",
+	"version": "2.0",
 	"description": "Ghost mode for your doomscrolling sessions. Keeps your history clean.",
-	"permissions": ["history", "storage", "activeTab"],
+	"permissions": ["history", "storage", "tabs"],
 	"background": {
 		"service_worker": "background.js"
 	},
 	"action": {
 		"default_popup": "popup.html"
+	},
+	"options_page": "options.html",
+	"commands": {
+		"toggle-ghost-mode": {
+			"suggested_key": {
+				"default": "Alt+G",
+				"mac": "Alt+G"
+			},
+			"description": "Toggle Ghost Mode for current site"
+		}
 	}
 }
