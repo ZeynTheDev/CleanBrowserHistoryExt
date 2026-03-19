@@ -4,23 +4,25 @@ const themeToggleBtn = document.getElementById('themeToggle');
 const optionsBtn = document.getElementById('optionsBtn');
 const body = document.body;
 
-let currentHostname = "";
+let currentMatchableUrl = "";
 let currentMode = "blacklist";
 
-// FUNGSI BARU: Pembersih www. agar cocok dengan database options.js
-function getCleanHostname(urlStr) {
-    try {
-        return new URL(urlStr).hostname.replace(/^www\./i, '').toLowerCase();
-    } catch(e) { return ""; }
+function getMatchableUrl(urlStr) {
+	try {
+		let parsed = new URL(urlStr);
+		let hostname = parsed.hostname.replace(/^www\./i, '').toLowerCase();
+		let pathname = parsed.pathname === '/' ? '' : parsed.pathname;
+		return hostname + pathname;
+	} catch(e) { return ""; }
 }
 
 // 1. Baca Setelan & URL
 chrome.tabs.query({active: true, currentWindow: true}, (tabs) => {
     if(tabs[0] && tabs[0].url) {
-        currentHostname = getCleanHostname(tabs[0].url);
+        currentMatchableUrl = getMatchableUrl(tabs[0].url);
         
-        if (currentHostname) {
-            siteDisplay.textContent = currentHostname;
+        if (currentMatchableUrl) {
+            siteDisplay.textContent = currentMatchableUrl.length > 30 ? currentMatchableUrl.substring(0, 27) + "..." : currentMatchableUrl;
             
             chrome.storage.local.get({ activeMode: 'blacklist', blacklist: [], whitelist: [] }, (res) => {
                 currentMode = res.activeMode;
@@ -28,16 +30,17 @@ chrome.tabs.query({active: true, currentWindow: true}, (tabs) => {
                 // PERBAIKAN LOGIKA UI: ON berarti "Ghost Mode Aktif (Hapus)"
                 let isGhostActive = false;
                 if (currentMode === 'blacklist') {
-                    isGhostActive = res.blacklist.includes(currentHostname);
+					// checking does URL contain one of the blacklist rules
+                    isGhostActive = res.blacklist.some(rule => currentMatchableUrl.startsWith(rule));
                 } else {
                     // Di Whitelist, aktif (hapus) jika TIDAK ADA di daftar aman
-                    isGhostActive = !res.whitelist.includes(currentHostname);
+                    isGhostActive = !res.whitelist.some(rule => currentMatchableUrl.startsWith(rule));
                 }
                 
                 if (isGhostActive) toggle.classList.add('on');
             });
         } else {
-            siteDisplay.textContent = "Halaman Internal";
+            siteDisplay.textContent = "Internal Page";
             toggle.style.pointerEvents = 'none';
             toggle.style.opacity = '0.5';
         }
@@ -50,7 +53,7 @@ chrome.storage.local.get(['theme'], (res) => {
 
 // 2. Logika Toggle (Menyimpan sesuai makna mode)
 toggle.addEventListener('click', () => {
-    if (!currentHostname) return;
+    if (!currentMatchableUrl) return; // <-- Sudah diperbaiki
 
     const isCurrentlyOn = toggle.classList.contains('on');
     const wantsGhostModeOn = !isCurrentlyOn; // Jika ingin menghapus histori
@@ -64,14 +67,14 @@ toggle.addEventListener('click', () => {
         let wList = res.whitelist;
         
         if (currentMode === 'blacklist') {
-            if (wantsGhostModeOn && !bList.includes(currentHostname)) bList.push(currentHostname);
-            if (!wantsGhostModeOn) bList = bList.filter(site => site !== currentHostname);
+            if (wantsGhostModeOn && !bList.includes(currentMatchableUrl)) bList.push(currentMatchableUrl);
+            if (!wantsGhostModeOn) bList = bList.filter(site => site !== currentMatchableUrl);
             chrome.storage.local.set({ blacklist: bList });
         } else {
             // WHITELIST: Jika ON (ingin dihapus), keluarkan dari daftar aman!
-            if (wantsGhostModeOn) wList = wList.filter(site => site !== currentHostname);
+            if (wantsGhostModeOn) wList = wList.filter(site => site !== currentMatchableUrl);
             // WHITELIST: Jika OFF (ingin disimpan), masukkan ke daftar aman!
-            if (!wantsGhostModeOn && !wList.includes(currentHostname)) wList.push(currentHostname);
+            if (!wantsGhostModeOn && !wList.includes(currentMatchableUrl)) wList.push(currentMatchableUrl);
             chrome.storage.local.set({ whitelist: wList });
         }
     });
