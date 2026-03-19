@@ -1,14 +1,17 @@
-// FUNGSI BARU: Pembersih www. seragam
-function getCleanHostname(urlStr) {
+// FUNGSI BARU: Hostname + Path
+function getMatchableUrl(urlStr) {
     try {
-        return new URL(urlStr).hostname.replace(/^www\./i, '').toLowerCase();
+        let parsed = new URL(urlStr);
+        let hostname = parsed.hostname.replace(/^www\./i, '').toLowerCase();
+        let pathname = parsed.pathname === '/' ? '' : parsed.pathname;
+        return hostname + pathname;
     } catch(e) { return ""; }
 }
 
 // --- Fungsi mengatur badge per tab ---
 function updateBadgeForTab(tabId, url) {
-    const hostname = getCleanHostname(url);
-    if (!hostname) {
+    const matchableUrl = getMatchableUrl(url);
+    if (!matchableUrl) {
         chrome.action.setBadgeText({ text: '', tabId: tabId });
         return;
     }
@@ -17,9 +20,9 @@ function updateBadgeForTab(tabId, url) {
         let isGhostActive = false;
         
         if (res.activeMode === 'blacklist') {
-            isGhostActive = res.blacklist.includes(hostname);
+            isGhostActive = res.blacklist.some(rule => matchableUrl.startsWith(rule));
         } else {
-            isGhostActive = !res.whitelist.includes(hostname);
+            isGhostActive = !res.whitelist.some(rule => matchableUrl.startsWith(rule));
         }
 
         if (isGhostActive) {
@@ -53,21 +56,21 @@ chrome.storage.onChanged.addListener((changes) => {
 
 // --- LOGIKA UTAMA: Filter dan Hapus Histori ---
 chrome.history.onVisited.addListener((historyItem) => {
-    const hostname = getCleanHostname(historyItem.url);
-    if (!hostname) return;
+    const matchableUrl = getMatchableUrl(historyItem.url);
+    if (!matchableUrl) return;
     
     chrome.storage.local.get({ activeMode: 'blacklist', blacklist: [], whitelist: [] }, (res) => {
         let shouldDelete = false;
         
         if (res.activeMode === 'blacklist') {
-            shouldDelete = res.blacklist.includes(hostname);
+            shouldDelete = res.blacklist.some(rule => matchableUrl.startsWith(rule));
         } else {
-            shouldDelete = !res.whitelist.includes(hostname);
+            shouldDelete = !res.whitelist.some(rule => matchableUrl.startsWith(rule));
         }
 
         if (shouldDelete) {
             chrome.history.deleteUrl({ url: historyItem.url });
-            console.log(`[${res.activeMode.toUpperCase()}] Ghost Mode AKTIF - Jejak dihapus: ${hostname}`);
+            console.log(`[${res.activeMode.toUpperCase()}] Ghost Mode ACTIVATED - History deleted: ${matchableUrl}`);
         }
     });
 });
